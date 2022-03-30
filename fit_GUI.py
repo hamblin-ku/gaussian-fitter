@@ -18,7 +18,7 @@ from astropy.io import ascii
 from astropy.table import Table, Column
 
 params = {
-    'text.latex.preamble': ['\\usepackage{gensymb}'],
+    'text.latex.preamble': '\\usepackage{gensymb}',
     'image.origin': 'lower',
     'image.interpolation': 'nearest',
     'image.cmap': 'gray', #gray
@@ -46,18 +46,9 @@ a.set_ylabel(r'Intensity')
 def gaussian(x, height, center, sigma, offset):
     return height*np.exp(-(x - center)**2/(2*sigma**2)) + offset
     
-def three_gaussians(x, h1, c1, w1, h2, c2, w2, h3, c3, w3, offset):
-    return (gaussian(x, h1, c1, w1, offset=0) +
-            gaussian(x, h2, c2, w2, offset=0) +
-            gaussian(x, h3, c3, w3, offset=0) + offset)
 def two_gaussians(x, h1, c1, w1, h2, c2, w2, offset):
-    return three_gaussians(x, h1, c1, w1, h2, c2, w2, 0,0,1, offset)
-
-def animate(i):
-    data = ascii.read("fitted_data/HD_3_2_FIT.csv")
-    data = Table(data)
-    a.clear()
-    a.plot(data['col0'], data['col1'])
+    return (gaussian(x, h1, c1, w1, offset=0) +
+            gaussian(x, h2, c2, w2, offset=0) + offset)
 
 class GaussFit(Frame):
     def __init__(self):
@@ -80,14 +71,12 @@ class GaussFit(Frame):
         self.pack(fill=BOTH, expand = 1)
         
         ## Frame containers
-        mainControls = tk.Frame(self, width = 300, height = 1000, background = "#3d3c3c")
-        mainControls.pack(fill=BOTH, expand  = True, side = LEFT)
+        mainControls = tk.Frame(self, background = "#3d3c3c")
+        mainControls.pack(ipady=10,ipadx=10, fill=BOTH, expand  = True, side = LEFT)
        
         self.canvasPlot = FigureCanvasTkAgg(f, self) #, width = 500, height = 1000)
         self.canvasPlot.get_tk_widget().pack(fill=BOTH, expand = True, side = LEFT)
         
-        fitValues = tk.Frame(self, background = "#878383")
-        fitValues.pack(fill = BOTH, expand = False, side = LEFT)
         ###
         
         ## Content for Frames
@@ -102,6 +91,7 @@ class GaussFit(Frame):
         
         self.selectionBox = Spinbox(selectFrame, justify = 'center' ,from_=1, to=2, width=3, command=self.set_N)
         self.selectionBox.pack(side = RIGHT, expand=False)
+        self.selectionBox.insert(0,1)
         ###
     
         
@@ -119,11 +109,19 @@ class GaussFit(Frame):
         ###: Refresh
         refreshButton = Button(mainControls, text = "Refresh", command = self.refreshFigure)
         refreshButton.pack(fill = X, pady=0)
+        ###
+        
+        ###: Save the plot:
+        SaveButton = Button(mainControls, text = "Save Plot", command = self.savePlot)
+        SaveButton.pack(fill =X, pady=0)
+        ###
+        
+        
         ### Coordinate limit Entries
         limitFrameX = tk.Frame(mainControls, background = "#3d5c3c")
-        limitFrameX.pack(fill = Y, expand = False, side = TOP)
+        limitFrameX.pack(fill = Y, expand = False, side = TOP, pady = (10,0))
         x_limits = Label(limitFrameX, text = " X limits ")
-        x_limits.pack( expand = True)
+        x_limits.pack( expand = True, )
         self.lower_xBox = Entry(limitFrameX, width = 9, justify = 'center')#, exportselection = 0)
         self.lower_xBox.pack(side = LEFT, expand = False)
         self.higher_xBox = Entry(limitFrameX, justify = 'center', exportselection = 0,  width = 9)
@@ -138,73 +136,58 @@ class GaussFit(Frame):
         self.higher_yBox = Entry(limitFrameY, justify = 'center', exportselection = 0,  width = 9)
         self.higher_yBox.pack(side = RIGHT, expand = False)
         ###
-        
-        ###
-        heightFrame = tk.Frame(mainControls,background = "#3d5c3c")
-        heightFrame.pack(fill = Y, expand = False, side = TOP)
-        heightParams = Label(heightFrame, text = " Fit Parameter Guesses ")
-        heightParams.pack(fill = X,side = TOP)
-        self.h1_Label = Label(heightFrame, text = "h_1")
-        self.h1_Label.pack(fill = Y,side = LEFT)
-        self.h1_box = Entry(heightFrame, justify = 'center', exportselection = 0, width = 5)
-        self.h1_box.pack(side = LEFT, expand = False)
-        self.h2_Label = Label(heightFrame, text = "h_2")
-        self.h2_Label.pack(fill = Y, side = LEFT)
-        self.h2_box = Entry(heightFrame, justify = 'center', exportselection = 0, width = 5)
-        self.h2_box.pack(side = LEFT, expand = False)
-        ###
-        
+
         ###
         centerFrame = tk.Frame(mainControls,background = "#3d3c3c")
-        centerFrame.pack(fill = Y, expand = False, side = TOP)
-        self.c1_Label = Label(centerFrame, text = "c_1")
+        centerFrame.pack(fill = Y, expand = False, side = TOP, pady = (10,0))
+        GuessParams = Label(centerFrame, text = " Fit Parameter Guesses ", anchor = CENTER,width = 16)
+        GuessParams.pack(fill = X,side = TOP)
+        self.c1_Label = Label(centerFrame, text = "c_1", width = 3)
         self.c1_Label.pack(fill = Y,side = LEFT)
         self.c1_box = Entry(centerFrame, justify = 'center', exportselection = 0, width = 5)
         self.c1_box.pack(side = LEFT, expand = False)
-        self.c2_Label = Label(centerFrame, text = "c_2")
+        self.c2_Label = Label(centerFrame, text = "c_2", width = 3)
         self.c2_Label.pack(fill = Y, side = LEFT)
         self.c2_box = Entry(centerFrame, justify = 'center', exportselection = 0, width = 5)
         self.c2_box.pack(side = LEFT, expand = False)
+        ###
+                
+        ###
+        heightFrame = tk.Frame(mainControls,background = "#3d5c3c")
+        heightFrame.pack(fill = Y, expand = False, side = TOP)
+        self.h1_Label = Label(heightFrame, text = "h_1", width = 3)
+        self.h1_Label.pack(fill = Y,side = LEFT)
+        self.h1_box = Entry(heightFrame, justify = 'center', exportselection = 0, width = 5)
+        self.h1_box.pack(side = LEFT, expand = False)
+        self.h2_Label = Label(heightFrame, text = "h_2", width = 3)
+        self.h2_Label.pack(fill = Y, side = LEFT)
+        self.h2_box = Entry(heightFrame, justify = 'center', exportselection = 0, width = 5)
+        self.h2_box.pack(side = LEFT, expand = False)
         
         self.h2_box.configure(state = 'disabled') #disable h2 and c2 since by default N_gauss = 1
         self.c2_box.configure(state = 'disabled')
         ###
         
-        ### Configuration of Output Params Frame
-        paramsFrame = tk.Frame(fitValues,background = "#878383")
-        paramsFrame.pack(fill = Y, expand = False, side = TOP)
-        fit_Label = Label(paramsFrame, text = "          Fit Parameters          ", justify = 'center')
-        fit_Label.config(font=("Times", 22))
-        fit_Label.pack(fill = Y, expand = False, side = TOP)
+        ###
+        yLabelFrame = tk.Frame(mainControls,background = "#3d3c3c")
+        yLabelFrame.pack(fill = Y, expand = False, side = TOP, pady = (10,0))
+        yLabelHeader = Label(yLabelFrame, text = "y-axis Label text", anchor = CENTER, width = 20)
+        yLabelHeader.pack(fill = X,side = TOP)
+        self.ylabel_box = Entry(yLabelFrame, justify = 'center', exportselection = 0, width = 20)
+        self.ylabel_box.pack(side = BOTTOM, expand = False)
+        self.ylabel_box.insert(0, "Intensity")
+        ###
         
+        ###
+        xLabelFrame = tk.Frame(mainControls,background = "#3d3c3c")
+        xLabelFrame.pack(fill = Y, expand = False, side = TOP, pady = (0,0))
+        xLabelHeader = Label(xLabelFrame, text = "x-axis Label text", anchor = CENTER, width = 20)
+        xLabelHeader.pack(fill = X,side = TOP)
+        self.xlabel_box = Entry(xLabelFrame, justify = 'center', exportselection = 0, width = 20)
+        self.xlabel_box.pack(side = BOTTOM, expand = False)
+        self.xlabel_box.insert(0, "Wavelength (nm)")
+        ###
         
-        hFitFrame = tk.Frame(fitValues, background = "#878383")
-        hFitFrame.pack(fill = Y, expand = False, side = TOP, pady = 10)
-        h1_Label_fit = Label(hFitFrame, text = "h_1", width = 5, anchor = CENTER)
-        h1_Label_fit.config(font=("Times", 20))
-        h1_Label_fit.pack(fill = Y,side = LEFT)
-        self.h1_box_fit = Entry(hFitFrame, justify = 'center', exportselection = 0, width = 8,state='disabled')
-        self.h1_box_fit.pack(side = LEFT,expand = False)
-        h2_Label_fit = Label(hFitFrame, text = "h_2", width = 5 ,anchor = CENTER)
-        h2_Label_fit.config(font=("Times", 20))
-        h2_Label_fit.pack(fill = Y, side = LEFT)
-        self.h2_box_fit = Entry(hFitFrame, justify = 'center', exportselection = 0, width = 8,state='disabled')
-        self.h2_box_fit.pack(side = LEFT, expand = False)
-    
-    
-        cFitFrame = tk.Frame(fitValues, background = "#878383")
-        cFitFrame.pack(fill = Y, expand = False, side = TOP, pady = 10)
-        c1_Label_fit = Label(cFitFrame, text = "c_1", width = 5, anchor = CENTER)
-        c1_Label_fit.config(font=("Times", 20))
-        c1_Label_fit.pack(fill = X,side = LEFT)
-        self.c1_box_fit = Entry(cFitFrame, justify = 'center', exportselection = 0, width = 8,state='disabled')
-        self.c1_box_fit.pack(side = LEFT,expand = False)
-        c2_Label_fit = Label(cFitFrame, text = "c_2", width = 5 ,anchor = CENTER)
-        c2_Label_fit.config(font=("Times", 20))
-        c2_Label_fit.pack(fill = X, side = LEFT)
-        self.c2_box_fit = Entry(cFitFrame, justify = 'center', exportselection = 0, width = 8,state='disabled')
-        self.c2_box_fit.pack(side = LEFT, expand = False)
-    
     def set_N(self):
         val = int(self.selectionBox.get())
         if self.N_gauss == 1 and val == 2:
@@ -219,22 +202,6 @@ class GaussFit(Frame):
         return
 
     def clearFit(self):
-        self.h1_box_fit.configure(state = 'normal')
-        self.h2_box_fit.configure(state = 'normal')
-        self.c1_box_fit.configure(state = 'normal')
-        self.c2_box_fit.configure(state = 'normal')
-        
-        self.h1_box_fit.delete(0, END)
-        self.h2_box_fit.delete(0, END)
-        self.c1_box_fit.delete(0, END)
-        self.c2_box_fit.delete(0, END)
-        
-        self.h1_box_fit.configure(state = 'disabled')
-        self.h2_box_fit.configure(state = 'disabled')
-        self.c1_box_fit.configure(state = 'disabled')
-        self.c2_box_fit.configure(state = 'disabled')
-
-        
         if self.N_gauss == 1:
             self.h1_box.delete(0, END)
             self.c1_box.delete(0, END)
@@ -253,15 +220,25 @@ class GaussFit(Frame):
 
         self.plot()
     
+    def savePlot(self):
+        save_name = tk.filedialog.asksaveasfilename(initialfile = "untitled_spectra.pdf", defaultextension=".pdf", filetypes=[("All Files","*.*"),("Text Documents","*.txt")])
+        if save_name is None:
+            return
+        f.savefig(save_name)
+        
     def refreshFigure(self):
-        x = self.data['col1']
-        y = self.data['col2']
+        
+        a.set_ylabel(r''+self.ylabel_box.get())
+        a.set_xlabel(r''+self.xlabel_box.get())
+        
         if self.notLoaded == True:
             #print "######## \n \n",self.lower_xBox.get()+1, "############## \n \n"
             a.set_xlim(float(self.lower_xBox.get()), float(self.higher_xBox.get()))
             #print "######## \n \n",self.lower_xBox.get(), "############## \n \n"
             a.set_ylim(float(self.lower_yBox.get()), float(self.higher_yBox.get()))
         elif self.notLoaded == False:
+            x = self.data['col1']
+            y = self.data['col2']
             x_min, x_max, y_min, y_max = min(x), max(x), min(y), max(y)
             a.set_xlim([x_min, x_max])
             a.set_ylim([y_min, y_max])
@@ -276,8 +253,15 @@ class GaussFit(Frame):
             self.higher_xBox.insert(END, x_max)
             self.higher_yBox.insert(END, y_max)
             self.notLoaded = True
+            
+            
+            
         self.canvasPlot.draw()
         return
+    
+    def clearFig(self):
+        a.clear()
+        self.plot()
     
     def getFileName(self):
         return self.fileName
@@ -285,8 +269,8 @@ class GaussFit(Frame):
     def plot(self):
         #self.data = Table(ascii.read(self.getFileName()))
         a.clear()
-        a.set_xlabel(r'Wavelength\ (nm)')
-        a.set_ylabel(r'Intensity')
+        a.set_ylabel(r''+self.ylabel_box.get())
+        a.set_xlabel(r''+self.xlabel_box.get())
         
         a.scatter(self.data['col1'], self.data['col2'], c = 'k', marker = '.') ##Figure out how to embed matplotlib plot into a plotFrame
         index = len(self.fileName) - 1
@@ -301,10 +285,9 @@ class GaussFit(Frame):
         
         self.refreshFigure()
         return
-                      #self.canvasPlot.update_idletasks()
-    #canvasPlot.get_tk_widget().pack(fill=BOTH, expand = True, side = LEFT)
 
     def fit(self):
+        self.clearFig()
         x = self.data['col1']
         y = self.data['col2']
         
@@ -316,24 +299,20 @@ class GaussFit(Frame):
             popt, pcov = curve_fit(gaussian, x, y, p0 = guess)
             err = np.sqrt(np.diag(pcov))
 
-            print(popt, err)
+            print('\n********************')
+            print('***Fit Parameters***')
+            print('********************\n ')
+            print( f'height = {popt[0]:.3f} +- {err[0]:.2f}')
+            print( f'center = {popt[1]:.3f} +- {err[1]:.2f}')
+            print( f'sigma = {popt[2]:.3f} +- {err[2]:.2f}\n')
+            print('********************')
             
             x_plot = np.linspace(x[0], x[-1], len(x)*10)
             y_interp = gaussian(x_plot, *popt)
             a.plot(x_plot, y_interp, c = 'r')
             self.refreshFigure()
 
-            self.h1_box_fit.configure(state = 'normal')
-            self.c1_box_fit.configure(state = 'normal')
 
-            self.h1_box_fit.delete(0, END)
-            self.c1_box_fit.delete(0, END)
-
-            self.h1_box_fit.insert(END,popt[0])
-            self.c1_box_fit.insert(END,popt[1])
-            
-            self.h1_box_fit.configure(state = 'disabled')
-            self.c1_box_fit.configure(state = 'disabled')
         elif self.N_gauss == 2:
             h_1 = float(self.h1_box.get())
             h_2 = float(self.h2_box.get())
@@ -345,32 +324,24 @@ class GaussFit(Frame):
             popt, pcov = curve_fit(two_gaussians, x, y, p0 = guess)
             err = np.sqrt(np.diag(pcov))
 
-            print(popt, err)
+            print('\n********************')
+            print('***Fit Parameters***')
+            print('********************\n ')
+            print( f'height_1 = {popt[0]:.3f} +- {err[0]:.2f}')
+            print( f'center_1 = {popt[1]:.3f} +- {err[1]:.2f}')
+            print( f'sigma_1 = {popt[2]:.3f} +- {err[2]:.2f}\n')
+
+            print( f'height_2 = {popt[3]:.3f} +- {err[3]:.2f}')
+            print( f'center_2 = {popt[4]:.3f} +- {err[4]:.2f}')
+            print( f'sigma_2 = {popt[5]:.3f} +- {err[5]:.2f}\n')
+            print('********************')
             
             x_plot = np.linspace(x[0], x[-1], len(x)*10)
             y_interp = two_gaussians(x_plot, *popt)
             a.plot(x_plot, y_interp, c = 'r')
             self.refreshFigure()
 
-            self.h1_box_fit.configure(state = 'normal')
-            self.h2_box_fit.configure(state = 'normal')
-            self.c1_box_fit.configure(state = 'normal')
-            self.c2_box_fit.configure(state = 'normal')
 
-            self.h1_box_fit.delete(0, END)
-            self.h2_box_fit.delete(0, END)
-            self.c1_box_fit.delete(0, END)
-            self.c2_box_fit.delete(0, END)
-            
-            self.h1_box_fit.insert(END,popt[0])
-            self.h2_box_fit.insert(END,popt[3])
-            self.c1_box_fit.insert(END,popt[1])
-            self.c2_box_fit.insert(END,popt[4])
-
-            self.h1_box_fit.configure(state = 'disabled')
-            self.h2_box_fit.configure(state = 'disabled')
-            self.c1_box_fit.configure(state = 'disabled')
-            self.c2_box_fit.configure(state = 'disabled')
 
 class StartPage(tk.Frame):
     
@@ -420,12 +391,6 @@ class PageTwo(tk.Frame):
         toolbar = NavigationToolbar2Tk(canvas, self)
         toolbar.update()
         canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-
-
-#ani = animation.FuncAnimation(f, animate, interval=1000)
-
-
 
 def main():
     
