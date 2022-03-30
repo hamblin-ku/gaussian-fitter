@@ -7,8 +7,6 @@ __pycache__/
 *.so
 
 
-.DS_Store
-.py~
 
 # Distribution / packaging
 .Python
@@ -131,3 +129,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+.DS_Store
+*.py~
+*.pyc
